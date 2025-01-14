@@ -147,6 +147,121 @@ const dishController = {
             console.error('获取商家菜品错误:', error);
             responseHandler(res, 500, false, '获取商家菜品失败，请稍后重试');
         }
+    },
+
+    // 添加新菜品
+    addDish: async (req, res) => {
+        try {
+            const { name, price, stock, description, merchantNo } = req.body;
+
+            // 验证必填字段
+            if (!name || !price || !stock || !merchantNo) {
+                return responseHandler(res, 400, false, '缺少必要参数');
+            }
+
+            // 验证商家是否存在且已通过审核
+            const [merchants] = await db.query(
+                'SELECT * FROM Merchant WHERE merchant_no = ? AND status = "已通过"',
+                [merchantNo]
+            );
+
+            if (merchants.length === 0) {
+                return responseHandler(res, 404, false, '商家不存在或未通过审核');
+            }
+
+            // 插入新菜品
+            const [result] = await db.query(
+                'INSERT INTO Dish (dishname, price, quantity, description, merchant_no) VALUES (?, ?, ?, ?, ?)',
+                [name, price, stock, description || '', merchantNo]
+            );
+
+            if (result.affectedRows === 1) {
+                // 获取新插入的菜品信息
+                const [newDish] = await db.query(
+                    'SELECT * FROM Dish WHERE dishno = ?',
+                    [result.insertId]
+                );
+
+                responseHandler(res, 201, true, '添加成功', {
+                    dish: {
+                        id: newDish[0].dishno,
+                        name: newDish[0].dishname,
+                        price: newDish[0].price,
+                        stock: newDish[0].quantity,
+                        description: newDish[0].description,
+                        merchantNo: newDish[0].merchant_no
+                    }
+                });
+            } else {
+                throw new Error('添加菜品失败');
+            }
+        } catch (error) {
+            console.error('添加菜品错误:', error);
+            responseHandler(res, 500, false, '添加菜品失败，请稍后重试');
+        }
+    },
+
+    // 修改菜品信息
+    updateDish: async (req, res) => {
+        try {
+            const { dishNo } = req.params;
+            const { name, price, stock, description, merchantNo } = req.body;
+
+            // 验证必填字段
+            if (!name || !price || !stock || !merchantNo) {
+                return responseHandler(res, 400, false, '缺少必要参数');
+            }
+
+            // 验证商家是否存在且已通过审核
+            const [merchants] = await db.query(
+                'SELECT * FROM Merchant WHERE merchant_no = ? AND status = "已通过"',
+                [merchantNo]
+            );
+
+            if (merchants.length === 0) {
+                return responseHandler(res, 404, false, '商家不存在或未通过审核');
+            }
+
+            // 验证菜品是否属于该商家
+            const [dishes] = await db.query(
+                'SELECT * FROM Dish WHERE dishno = ? AND merchant_no = ?',
+                [dishNo, merchantNo]
+            );
+
+            if (dishes.length === 0) {
+                return responseHandler(res, 404, false, '菜品不存在或不属于该商家');
+            }
+
+            // 更新菜品信息
+            const [result] = await db.query(
+                'UPDATE Dish SET dishname = ?, price = ?, quantity = ?, description = ? WHERE dishno = ? AND merchant_no = ?',
+                [name, price, stock, description || '', dishNo, merchantNo]
+            );
+
+            if (result.affectedRows === 1) {
+                // 获取更新后的菜品信息
+                const [updatedDish] = await db.query(
+                    'SELECT * FROM Dish WHERE dishno = ?',
+                    [dishNo]
+                );
+
+                responseHandler(res, 200, true, '修改成功', {
+                    dish: {
+                        id: updatedDish[0].dishno,
+                        name: updatedDish[0].dishname,
+                        price: updatedDish[0].price,
+                        stock: updatedDish[0].quantity,
+                        description: updatedDish[0].description,
+                        merchantNo: updatedDish[0].merchant_no
+                    }
+                });
+            } else {
+                throw new Error('修改菜品失败');
+            }
+        } catch (error) {
+            console.error('修改菜品错误:', error);
+            responseHandler(res, 500, false, '修改菜品失败，请稍后重试');
+        }
     }
 };
 

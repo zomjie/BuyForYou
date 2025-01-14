@@ -13,6 +13,7 @@
         <view class="basic-info">
           <text class="name">{{userInfo.name}}</text>
           <text class="college">{{userInfo.college}} | {{userInfo.grade}}年级</text>
+          <text v-if="userInfo.type === 1" class="admin-badge">管理员</text>
         </view>
       </view>
       <view class="info-list">
@@ -22,17 +23,39 @@
         </view>
         <view class="divider"></view>
         <view class="menu-list">
-          <view class="menu-item" @click="handleOrders">
-            <text class="iconfont icon-order"></text>
-            <text>我的订单</text>
-          </view>
-          <view class="menu-item" @click="handleComplaints">
-            <text class="iconfont icon-complaint"></text>
-            <text>投诉记录</text>
-          </view>
-          <view class="menu-item" @click="handleSettings">
-            <text class="iconfont icon-settings"></text>
-            <text>设置</text>
+          <!-- 管理员菜单 -->
+          <template v-if="userInfo.type === 1">
+            <view class="menu-item" @click="handleComplaints">
+              <text class="iconfont icon-complaint"></text>
+              <text>管理投诉</text>
+            </view>
+            <view class="menu-item" @click="handleMerchantAudit">
+              <text class="iconfont icon-audit"></text>
+              <text>审核商家</text>
+            </view>
+            <view class="menu-item" @click="handleBlacklist">
+              <text class="iconfont icon-blacklist"></text>
+              <text>管理黑名单</text>
+            </view>
+          </template>
+          <!-- 普通用户菜单 -->
+          <template v-else>
+            <view class="menu-item" @click="handleDeliveries">
+              <text class="iconfont icon-delivery"></text>
+              <text>配送记录</text>
+            </view>
+            <view class="menu-item" @click="handleComplaints">
+              <text class="iconfont icon-complaint"></text>
+              <text>投诉记录</text>
+            </view>
+            <view class="menu-item" @click="handleSettings">
+              <text class="iconfont icon-settings"></text>
+              <text>个人设置</text>
+            </view>
+          </template>
+          <view class="menu-item logout" @click="handleLogout">
+            <text class="iconfont icon-logout"></text>
+            <text>退出登录</text>
           </view>
         </view>
       </view>
@@ -62,13 +85,17 @@
             <text class="iconfont icon-dish"></text>
             <text>菜品管理</text>
           </view>
-          <view class="menu-item" @click="handleMerchantOrders">
+          <!-- <view class="menu-item" @click="handleMerchantOrders">
             <text class="iconfont icon-order"></text>
             <text>订单管理</text>
-          </view>
+          </view> -->
           <view class="menu-item" @click="handleShopSettings">
             <text class="iconfont icon-settings"></text>
             <text>店铺设置</text>
+          </view>
+          <view class="menu-item logout" @click="handleLogout">
+            <text class="iconfont icon-logout"></text>
+            <text>退出登录</text>
           </view>
         </view>
       </view>
@@ -229,19 +256,30 @@ export default {
           ? { userId: this.loginForm.userId, password: this.loginForm.password }
           : { merchantNo: this.loginForm.merchantNo, password: this.loginForm.password }
 
-        const response = await uni.request({
-          url,
+        const response = await fetch(url, {
           method: 'POST',
-          data: params
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(params)
         })
+        const data = await response.json()
 
-        if (response.data.success) {
+        if (data.success) {
           this.isLoggedIn = true
           this.userType = this.loginType
           if (this.loginType === 'user') {
-            this.userInfo = response.data.user
+            this.userInfo = data.data.user
+            // 保存用户信息到本地存储
+            uni.setStorageSync('userInfo', JSON.stringify(data.data.user))
+            uni.setStorageSync('userType', 'user')
+            uni.setStorageSync('isLoggedIn', 'true')
           } else {
-            this.merchantInfo = response.data.merchant
+            this.merchantInfo = data.data.merchant
+            // 保存商家信息到本地存储
+            uni.setStorageSync('merchantInfo', JSON.stringify(data.data.merchant))
+            uni.setStorageSync('userType', 'merchant')
+            uni.setStorageSync('isLoggedIn', 'true')
           }
           this.closeLoginPopup()
           uni.showToast({
@@ -250,11 +288,12 @@ export default {
           })
         } else {
           uni.showToast({
-            title: response.data.message || '登录失败',
+            title: data.message || '登录失败',
             icon: 'none'
           })
         }
       } catch (error) {
+        console.error('登录错误:', error)
         uni.showToast({
           title: '网络错误',
           icon: 'none'
@@ -308,11 +347,15 @@ export default {
       }
     },
     // 其他功能方法
-    handleOrders() {
-      uni.navigateTo({ url: '/pages/orders/orders' })
+    handleDeliveries() {
+      uni.navigateTo({ url: '/pages/user/deliveries/deliveries' })
     },
     handleComplaints() {
-      uni.navigateTo({ url: '/pages/complaints/complaints' })
+      if (this.userInfo && this.userInfo.type === 1) {
+        uni.navigateTo({ url: '/pages/admin/complaints/complaints' })
+      } else {
+        uni.navigateTo({ url: '/pages/complaints/complaints' })
+      }
     },
     handleSettings() {
       uni.navigateTo({ url: '/pages/settings/settings' })
@@ -325,6 +368,53 @@ export default {
     },
     handleShopSettings() {
       uni.navigateTo({ url: '/pages/merchant/settings/settings' })
+    },
+    
+    handleLogout() {
+      // 清除登录状态和用户信息
+      uni.removeStorageSync('isLoggedIn')
+      uni.removeStorageSync('userType')
+      uni.removeStorageSync('userInfo')
+      uni.removeStorageSync('merchantInfo')
+      
+      // 重置组件状态
+      this.isLoggedIn = false
+      this.userType = ''
+      this.userInfo = null
+      this.merchantInfo = null
+      
+      uni.showToast({
+        title: '已退出登录',
+        icon: 'success'
+      })
+    },
+    handleMerchantAudit() {
+      uni.navigateTo({ url: '/pages/admin/merchant-audit/merchant-audit' })
+    },
+    handleBlacklist() {
+      uni.navigateTo({ url: '/pages/admin/blacklist/blacklist' })
+    }
+  },
+  mounted() {
+    // 检查登录状态
+    const isLoggedIn = uni.getStorageSync('isLoggedIn') === 'true'
+    const userType = uni.getStorageSync('userType')
+    
+    if (isLoggedIn && userType) {
+      this.isLoggedIn = true
+      this.userType = userType
+      
+      if (userType === 'user') {
+        const userInfo = uni.getStorageSync('userInfo')
+        if (userInfo) {
+          this.userInfo = JSON.parse(userInfo)
+        }
+      } else {
+        const merchantInfo = uni.getStorageSync('merchantInfo')
+        if (merchantInfo) {
+          this.merchantInfo = JSON.parse(merchantInfo)
+        }
+      }
     }
   }
 }
@@ -602,6 +692,121 @@ export default {
       &:active {
         transform: scale(0.9);
         opacity: 0.7;
+      }
+    }
+  }
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  padding: 30rpx 20rpx;
+  border-bottom: 1rpx solid #eee;
+  
+  &.logout {
+    margin-top: 20rpx;
+    color: #ff4d4f;
+    border-bottom: none;
+    background-color: #fff1f0;
+    border-radius: 8rpx;
+    
+    .iconfont {
+      color: #ff4d4f;
+    }
+  }
+  
+  .iconfont {
+    font-size: 40rpx;
+    margin-right: 20rpx;
+    color: #666;
+  }
+  
+  text {
+    font-size: 28rpx;
+  }
+}
+
+.admin-badge {
+  font-size: 20rpx;
+  color: #fff;
+  background-color: #ff9800;
+  padding: 4rpx 12rpx;
+  border-radius: 20rpx;
+  margin-top: 8rpx;
+}
+
+.menu-list {
+  display: flex;
+  flex-wrap: wrap;
+  padding: 20rpx 0;
+
+  .menu-item {
+    width: 33.33%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20rpx 0;
+    transition: all 0.3s ease;
+
+    &:active {
+      opacity: 0.7;
+    }
+
+    .iconfont {
+      font-size: 48rpx;
+      margin-bottom: 10rpx;
+      
+      &.icon-complaint {
+        color: #ff9800;
+      }
+      
+      &.icon-audit {
+        color: #2196f3;
+      }
+      
+      &.icon-blacklist {
+        color: #f44336;
+      }
+
+      &.icon-dish {
+        color: #4caf50;
+      }
+
+      &.icon-order {
+        color: #ff9800;
+      }
+
+      &.icon-settings {
+        color: #2196f3;
+      }
+
+      &.icon-logout {
+        color: #ff4d4f;
+      }
+    }
+
+    text {
+      font-size: 24rpx;
+      color: #333;
+    }
+
+    &.logout {
+      margin-top: 40rpx;
+      width: 100%;
+      flex-direction: row;
+      justify-content: center;
+      background-color: #fff1f0;
+      border-radius: 8rpx;
+      padding: 24rpx 0;
+      
+      .iconfont {
+        margin: 0 10rpx 0 0;
+        font-size: 32rpx;
+      }
+      
+      text {
+        color: #ff4d4f;
+        font-size: 28rpx;
       }
     }
   }

@@ -3,6 +3,7 @@ const cors = require('cors');
 const userRoutes = require('./routes/userRoutes');
 const merchantRoutes = require('./routes/merchantRoutes');
 const dishRoutes = require('./routes/dishRoutes');
+const orderRoutes = require('./routes/orderRoutes');
 
 const app = express();
 
@@ -20,6 +21,7 @@ app.use(express.json());
 app.use('/api/user', userRoutes);
 app.use('/api/merchant', merchantRoutes);
 app.use('/api/dishes', dishRoutes);
+app.use('/api/order', orderRoutes);
 
 // 错误处理中间件
 app.use((err, req, res, next) => {

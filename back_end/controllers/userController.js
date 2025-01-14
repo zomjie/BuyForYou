@@ -30,6 +30,33 @@ const userController = {
         }
     },
 
+    // 管理员注册
+    registerAdmin: async (req, res) => {
+        try {
+            const { userId, name, college, contact, grade, password } = req.body;
+
+            // 检查用户是否已存在
+            const [existingUser] = await db.query('SELECT * FROM User WHERE user_id = ?', [userId]);
+            if (existingUser.length > 0) {
+                return responseHandler(res, 400, false, '该学号已被注册');
+            }
+
+            // 密码加密
+            const hashedPassword = await bcrypt.hash(password, 10);
+
+            // 插入新管理员用户，type设置为1
+            await db.query(
+                'INSERT INTO User (user_id, password, name, college, contact, grade, type) VALUES (?, ?, ?, ?, ?, ?, 1)',
+                [userId, hashedPassword, name, college, contact, grade]
+            );
+
+            responseHandler(res, 200, true, '管理员注册成功');
+        } catch (error) {
+            console.error('管理员注册错误:', error);
+            responseHandler(res, 500, false, '注册失败，请稍后重试');
+        }
+    },
+
     // 用户登录
     login: async (req, res) => {
         try {
@@ -55,7 +82,8 @@ const userController = {
                 name: user.name,
                 college: user.college,
                 contact: user.contact,
-                grade: user.grade
+                grade: user.grade,
+                type: user.type
             };
 
             responseHandler(res, 200, true, '登录成功', { user: userInfo });

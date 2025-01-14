@@ -24,6 +24,46 @@
 				"navigationBarTextStyle": "white",
 				"enablePullDownRefresh": false
 			}
+		},
+		{
+			"path": "pages/admin/merchant-audit/merchant-audit",
+			"style": {
+				"navigationBarTitleText": "商家审核",
+				"navigationBarBackgroundColor": "#ff9800",
+				"navigationBarTextStyle": "white"
+			}
+		},
+		{
+			"path": "pages/admin/complaints/complaints",
+			"style": {
+				"navigationBarTitleText": "投诉管理",
+				"navigationBarBackgroundColor": "#ff9800",
+				"navigationBarTextStyle": "white"
+			}
+		},
+		{
+			"path": "pages/admin/blacklist/blacklist",
+			"style": {
+				"navigationBarTitleText": "黑名单管理",
+				"navigationBarBackgroundColor": "#ff9800",
+				"navigationBarTextStyle": "white"
+			}
+		},
+		{
+			"path": "pages/user/deliveries/deliveries",
+			"style": {
+				"navigationBarTitleText": "配送记录",
+				"navigationBarBackgroundColor": "#ff9800",
+				"navigationBarTextStyle": "white"
+			}
+		},
+		{
+			"path": "pages/merchant/dishes/dishes",
+			"style": {
+				"navigationBarTitleText": "菜品管理",
+				"navigationBarBackgroundColor": "#ff9800",
+				"navigationBarTextStyle": "white"
+			}
 		}
 	],
 	"globalStyle": {
