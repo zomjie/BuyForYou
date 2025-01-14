@@ -1,110 +1,153 @@
 const db = require('../config/database');
-const ResponseHandler = require('../utils/responseHandler');
+const { responseHandler } = require('../utils/responseHandler');
 
-class DishController {
-  static async getDishesGroupByDiningHall(req, res) {
-    try {
-      const query = `
-        SELECT 
-          dh.dininghall_no,
-          dh.name as dininghall_name,
-          dh.position as dininghall_position,
-          m.merchant_no,
-          m.name as merchant_name,
-          d.dishno,
-          d.dishname,
-          d.dishtype,
-          d.price,
-          d.description,
-          d.quantity,
-          TO_BASE64(d.dish_image) as dish_image
-        FROM dininghall dh
-        LEFT JOIN merchant m ON dh.dininghall_no = m.dininghall_no
-        LEFT JOIN dish d ON m.merchant_no = d.merchant_no
-        WHERE m.status = '已通过'
-        ORDER BY dh.dininghall_no, m.merchant_no, d.dishno
-      `;
+const dishController = {
+    // 获取按食堂分组的菜品
+    getDishesByDiningHall: async (req, res) => {
+        try {
+            // 获取所有食堂及其商家和菜品信息
+            const [results] = await db.query(`
+                SELECT 
+                    DH.dininghall_no,
+                    DH.name as dininghall_name,
+                    DH.position,
+                    M.merchant_no,
+                    M.name as merchant_name,
+                    M.description as merchant_description,
+                    M.likes as merchant_likes,
+                    M.hates as merchant_hates,
+                    D.dishno,
+                    D.dishname,
+                    D.dishtype,
+                    D.price,
+                    D.description as dish_description,
+                    D.quantity
+                FROM DiningHall DH
+                LEFT JOIN Merchant M ON DH.dininghall_no = M.dininghall_no AND M.status = '已通过'
+                LEFT JOIN Dish D ON M.merchant_no = D.merchant_no
+                ORDER BY DH.dininghall_no, M.merchant_no, D.dishno
+            `);
 
-      // 添加数据库连接测试
-      try {
-        await db.execute('SELECT 1');
-        console.log('Database connection successful');
-      } catch (dbError) {
-        console.error('Database connection error:', dbError);
-        return ResponseHandler.error(res, 'Database connection failed', 500);
-      }
+            console.log('Database query results:', results);
 
-      const [rows] = await db.execute(query);
-      console.log('Query result:', rows); // 添加日志
+            // 组织数据结构
+            const diningHalls = {};
+            results.forEach(row => {
+                // 如果食堂不存在，创建食堂对象
+                if (!diningHalls[row.dininghall_no]) {
+                    diningHalls[row.dininghall_no] = {
+                        dininghallNo: row.dininghall_no,
+                        name: row.dininghall_name,
+                        position: row.position,
+                        merchants: {}
+                    };
+                }
 
-      if (!rows || rows.length === 0) {
-        return ResponseHandler.success(res, [], 'No data found');
-      }
+                // 如果有商家信息
+                if (row.merchant_no) {
+                    // 如果商家不存在，创建商家对象
+                    if (!diningHalls[row.dininghall_no].merchants[row.merchant_no]) {
+                        diningHalls[row.dininghall_no].merchants[row.merchant_no] = {
+                            merchantNo: row.merchant_no,
+                            name: row.merchant_name,
+                            description: row.merchant_description,
+                            likes: row.merchant_likes || 0,
+                            hates: row.merchant_hates || 0,
+                            dishes: []
+                        };
+                    }
 
-      // 重组数据结构
-      const groupedData = rows.reduce((acc, curr) => {
-        if (!curr.merchant_no) return acc;
-
-        const diningHall = acc.find(dh => dh.dininghall_no === curr.dininghall_no);
-        
-        if (!diningHall) {
-          acc.push({
-            dininghall_no: curr.dininghall_no,
-            dininghall_name: curr.dininghall_name,
-            dininghall_position: curr.dininghall_position,
-            merchants: [{
-              merchant_no: curr.merchant_no,
-              merchant_name: curr.merchant_name,
-              dishes: [{
-                dishno: curr.dishno,
-                dishname: curr.dishname,
-                dishtype: curr.dishtype,
-                price: curr.price,
-                description: curr.description,
-                quantity: curr.quantity,
-                dish_image: curr.dish_image
-              }]
-            }]
-          });
-        } else {
-          const merchant = diningHall.merchants.find(m => m.merchant_no === curr.merchant_no);
-          
-          if (!merchant) {
-            diningHall.merchants.push({
-              merchant_no: curr.merchant_no,
-              merchant_name: curr.merchant_name,
-              dishes: [{
-                dishno: curr.dishno,
-                dishname: curr.dishname,
-                dishtype: curr.dishtype,
-                price: curr.price,
-                description: curr.description,
-                quantity: curr.quantity,
-                dish_image: curr.dish_image
-              }]
+                    // 如果有菜品信息，添加到商家的菜品列表中
+                    if (row.dishno) {
+                        diningHalls[row.dininghall_no].merchants[row.merchant_no].dishes.push({
+                            dishNo: row.dishno,
+                            name: row.dishname,
+                            type: row.dishtype,
+                            price: row.price,
+                            description: row.dish_description,
+                            quantity: row.quantity
+                        });
+                    }
+                }
             });
-          } else {
-            merchant.dishes.push({
-              dishno: curr.dishno,
-              dishname: curr.dishname,
-              dishtype: curr.dishtype,
-              price: curr.price,
-              description: curr.description,
-              quantity: curr.quantity,
-              dish_image: curr.dish_image
+
+            // 转换对象为数组格式
+            const formattedData = Object.values(diningHalls).map(diningHall => ({
+                ...diningHall,
+                merchants: Object.values(diningHall.merchants)
+            }));
+
+            console.log('Formatted response data:', {
+                success: true,
+                message: '获取成功',
+                data: { diningHalls: formattedData }
             });
-          }
+
+            res.status(200).json({
+                success: true,
+                message: '获取成功',
+                data: { diningHalls: formattedData }
+            });
+        } catch (error) {
+            console.error('获取食堂菜品错误:', error);
+            res.status(500).json({
+                success: false,
+                message: '获取食堂菜品失败，请稍后重试'
+            });
         }
-        
-        return acc;
-      }, []);
+    },
 
-      ResponseHandler.success(res, groupedData);
-    } catch (error) {
-      console.error('Detailed error:', error); // 更详细的错误日志
-      ResponseHandler.error(res, `Failed to fetch dishes: ${error.message}`);
+    // 获取特定商家的菜品
+    getDishesByMerchant: async (req, res) => {
+        try {
+            const { merchantNo } = req.params;
+
+            // 获取商家信息和菜品
+            const [results] = await db.query(`
+                SELECT 
+                    M.merchant_no,
+                    M.name as merchant_name,
+                    M.description as merchant_description,
+                    M.likes,
+                    M.hates,
+                    D.dishno,
+                    D.dishname,
+                    D.dishtype,
+                    D.price,
+                    D.description as dish_description,
+                    D.quantity
+                FROM Merchant M
+                LEFT JOIN Dish D ON M.merchant_no = D.merchant_no
+                WHERE M.merchant_no = ? AND M.status = '已通过'
+            `, [merchantNo]);
+
+            if (results.length === 0) {
+                return responseHandler(res, 404, false, '商家不存在或未通过审核');
+            }
+
+            // 组织数据结构
+            const merchantInfo = {
+                merchantNo: results[0].merchant_no,
+                name: results[0].merchant_name,
+                description: results[0].merchant_description,
+                likes: results[0].likes,
+                hates: results[0].hates,
+                dishes: results.filter(row => row.dishno).map(row => ({
+                    dishNo: row.dishno,
+                    name: row.dishname,
+                    type: row.dishtype,
+                    price: row.price,
+                    description: row.dish_description,
+                    quantity: row.quantity
+                }))
+            };
+
+            responseHandler(res, 200, true, '获取成功', { merchant: merchantInfo });
+        } catch (error) {
+            console.error('获取商家菜品错误:', error);
+            responseHandler(res, 500, false, '获取商家菜品失败，请稍后重试');
+        }
     }
-  }
-}
+};
 
-module.exports = DishController; 
+module.exports = dishController; 

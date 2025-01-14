@@ -1,104 +1,85 @@
 const db = require('../config/database');
-const ResponseHandler = require('../utils/responseHandler');
 const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
+const { responseHandler } = require('../utils/responseHandler');
 
-const JWT_SECRET = 'your-secret-key'; // 在实际应用中应该使用环境变量
+const merchantController = {
+    // 商家注册
+    register: async (req, res) => {
+        try {
+            const { merchantNo, name, description, phone, dininghallNo, password } = req.body;
 
-class MerchantController {
-  static async register(req, res) {
-    try {
-      const { merchant_no, name, password, description, phone, dininghall_no } = req.body;
+            // 检查商家是否已存在
+            const [existingMerchant] = await db.query('SELECT * FROM Merchant WHERE merchant_no = ?', [merchantNo]);
+            if (existingMerchant.length > 0) {
+                return responseHandler(res, 400, false, '该商家编号已被注册');
+            }
 
-      // 检查商家是否已存在
-      const [existingMerchants] = await db.execute(
-        'SELECT * FROM merchant WHERE merchant_no = ?',
-        [merchant_no]
-      );
+            // 检查食堂是否存在
+            const [diningHall] = await db.query('SELECT * FROM DiningHall WHERE dininghall_no = ?', [dininghallNo]);
+            if (diningHall.length === 0) {
+                return responseHandler(res, 400, false, '所选食堂不存在');
+            }
 
-      if (existingMerchants.length > 0) {
-        return ResponseHandler.error(res, '该商家编号已被注册', 400);
-      }
+            // 密码加密
+            const hashedPassword = await bcrypt.hash(password, 10);
 
-      // 加密密码
-      const hashedPassword = await bcrypt.hash(password, 10);
+            // 插入新商家
+            await db.query(
+                'INSERT INTO Merchant (merchant_no, name, description, phone, dininghall_no, password, status) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                [merchantNo, name, description, phone, dininghallNo, hashedPassword, '待审核']
+            );
 
-      // 插入新商家
-      await db.execute(
-        'INSERT INTO merchant (merchant_no, name, password, description, phone, dininghall_no, status) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        [merchant_no, name, hashedPassword, description, phone, dininghall_no, '待审核']
-      );
+            responseHandler(res, 200, true, '注册成功，等待审核');
+        } catch (error) {
+            console.error('注册错误:', error);
+            responseHandler(res, 500, false, '注册失败，请稍后重试');
+        }
+    },
 
-      // 获取新插入的商家信息
-      const [merchants] = await db.execute(
-        'SELECT * FROM merchant WHERE merchant_no = ?',
-        [merchant_no]
-      );
-      
-      const merchant = merchants[0];
-      
-      // 生成 token
-      const token = jwt.sign(
-        { merchant_no: merchant.merchant_no },
-        JWT_SECRET,
-        { expiresIn: '24h' }
-      );
+    // 商家登录
+    login: async (req, res) => {
+        try {
+            const { merchantNo, password } = req.body;
 
-      // 返回商家信息（不包含密码）
-      const merchantInfo = { ...merchant };
-      delete merchantInfo.password;
+            // 查找商家
+            const [merchants] = await db.query('SELECT * FROM Merchant WHERE merchant_no = ?', [merchantNo]);
+            if (merchants.length === 0) {
+                return responseHandler(res, 400, false, '商家不存在');
+            }
 
-      ResponseHandler.success(res, { token, merchantInfo }, '注册成功，等待审核');
-    } catch (error) {
-      console.error('Register error:', error);
-      ResponseHandler.error(res, '注册失败');
+            const merchant = merchants[0];
+
+            // 验证密码
+            const isPasswordValid = await bcrypt.compare(password, merchant.password);
+            if (!isPasswordValid) {
+                return responseHandler(res, 400, false, '密码错误');
+            }
+
+            // 检查商家状态
+            if (merchant.status === '待审核') {
+                return responseHandler(res, 400, false, '您的账号正在审核中');
+            } else if (merchant.status === '已拒绝') {
+                return responseHandler(res, 400, false, '您的账号未通过审核');
+            }
+
+            // 返回商家信息（不包含密码）
+            const merchantInfo = {
+                merchantNo: merchant.merchant_no,
+                name: merchant.name,
+                description: merchant.description,
+                phone: merchant.phone,
+                dininghallNo: merchant.dininghall_no,
+                status: merchant.status,
+                likes: merchant.likes,
+                hates: merchant.hates
+            };
+
+            responseHandler(res, 200, true, '登录成功', { merchant: merchantInfo });
+        } catch (error) {
+            console.error('登录错误:', error);
+            responseHandler(res, 500, false, '登录失败，请稍后重试');
+        }
     }
-  }
+};
 
-  static async login(req, res) {
-    try {
-      const { merchant_no, password } = req.body;
-
-      // 查找商家
-      const [merchants] = await db.execute(
-        'SELECT * FROM merchant WHERE merchant_no = ?',
-        [merchant_no]
-      );
-
-      if (merchants.length === 0) {
-        return ResponseHandler.error(res, '商家不存在', 400);
-      }
-
-      const merchant = merchants[0];
-
-      // 验证密码
-      const isValidPassword = await bcrypt.compare(password, merchant.password);
-      if (!isValidPassword) {
-        return ResponseHandler.error(res, '密码错误', 400);
-      }
-
-      // 检查商家状态
-      if (merchant.status !== '已通过') {
-        return ResponseHandler.error(res, '商家账号待审核或已被拒绝', 400);
-      }
-
-      // 生成 token
-      const token = jwt.sign(
-        { merchant_no: merchant.merchant_no },
-        JWT_SECRET,
-        { expiresIn: '24h' }
-      );
-
-      // 返回商家信息（不包含密码）
-      const merchantInfo = { ...merchant };
-      delete merchantInfo.password;
-
-      ResponseHandler.success(res, { token, merchantInfo }, '登录成功');
-    } catch (error) {
-      console.error('Login error:', error);
-      ResponseHandler.error(res, '登录失败');
-    }
-  }
-}
-
-module.exports = MerchantController; 
+module.exports = merchantController; 

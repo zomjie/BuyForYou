@@ -1,32 +1,36 @@
 const express = require('express');
 const cors = require('cors');
-const dishRoutes = require('./routes/dishRoutes');
 const userRoutes = require('./routes/userRoutes');
 const merchantRoutes = require('./routes/merchantRoutes');
-const diningHallRoutes = require('./routes/diningHallRoutes');
+const dishRoutes = require('./routes/dishRoutes');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
 
-// Middleware
-app.use(cors());
+// CORS 配置
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+// 中间件
 app.use(express.json());
 
-// Routes
+// 路由
+app.use('/api/user', userRoutes);
+app.use('/api/merchant', merchantRoutes);
 app.use('/api/dishes', dishRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/merchants', merchantRoutes);
-app.use('/api/dining-halls', diningHallRoutes);
 
-// Error handling
+// 错误处理中间件
 app.use((err, req, res, next) => {
-  console.error(err.stack);
+  console.error('Error:', err);
   res.status(500).json({
     success: false,
-    message: 'Something went wrong!'
+    message: err.message || '服务器内部错误'
   });
 });
 
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+    console.log(`Server is running on port ${PORT}`);
 }); 

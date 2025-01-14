@@ -1,8 +1,11 @@
 const express = require('express');
 const router = express.Router();
-const MerchantController = require('../controllers/merchantController');
+const merchantController = require('../controllers/merchantController');
 
-router.post('/register', MerchantController.register);
-router.post('/login', MerchantController.login);
+// 商家登录
+router.post('/login', merchantController.login);
+
+// 商家注册
+router.post('/register', merchantController.register);
 
 module.exports = router; 

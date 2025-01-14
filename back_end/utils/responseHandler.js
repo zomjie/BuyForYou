@@ -1,18 +1,21 @@
-class ResponseHandler {
-  static success(res, data, message = 'Success') {
-    res.status(200).json({
-      success: true,
-      message,
-      data
-    });
-  }
+/**
+ * 统一的响应处理函数
+ * @param {Object} res - Express response 对象
+ * @param {number} status - HTTP 状态码
+ * @param {boolean} success - 请求是否成功
+ * @param {string} message - 响应消息
+ * @param {Object} [data] - 响应数据（可选）
+ */
+const responseHandler = (res, status, success, message, data = null) => {
+    const response = {
+        success,
+        message,
+        ...(data && { data })
+    };
+    
+    res.status(status).json(response);
+};
 
-  static error(res, message = 'Error', statusCode = 500) {
-    res.status(statusCode).json({
-      success: false,
-      message
-    });
-  }
-}
-
-module.exports = ResponseHandler; 
+module.exports = {
+    responseHandler
+}; 

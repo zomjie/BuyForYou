@@ -1,99 +1,69 @@
 const db = require('../config/database');
-const ResponseHandler = require('../utils/responseHandler');
 const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
+const { responseHandler } = require('../utils/responseHandler');
 
-const JWT_SECRET = 'your-secret-key'; // 在实际应用中应该使用环境变量
+const userController = {
+    // 用户注册
+    register: async (req, res) => {
+        try {
+            const { userId, name, college, contact, grade, password } = req.body;
 
-class UserController {
-  static async register(req, res) {
-    try {
-      const { user_id, password, name, college, contact, grade } = req.body;
+            // 检查用户是否已存在
+            const [existingUser] = await db.query('SELECT * FROM User WHERE user_id = ?', [userId]);
+            if (existingUser.length > 0) {
+                return responseHandler(res, 400, false, '该学号已被注册');
+            }
 
-      // 检查用户是否已存在
-      const [existingUsers] = await db.execute(
-        'SELECT * FROM user WHERE user_id = ?',
-        [user_id]
-      );
+            // 密码加密
+            const hashedPassword = await bcrypt.hash(password, 10);
 
-      if (existingUsers.length > 0) {
-        return ResponseHandler.error(res, '该学号已被注册', 400);
-      }
+            // 插入新用户
+            await db.query(
+                'INSERT INTO User (user_id, password, name, college, contact, grade, type) VALUES (?, ?, ?, ?, ?, ?, 0)',
+                [userId, hashedPassword, name, college, contact, grade]
+            );
 
-      // 加密密码
-      const hashedPassword = await bcrypt.hash(password, 10);
+            responseHandler(res, 200, true, '注册成功');
+        } catch (error) {
+            console.error('注册错误:', error);
+            responseHandler(res, 500, false, '注册失败，请稍后重试');
+        }
+    },
 
-      // 插入新用户
-      await db.execute(
-        'INSERT INTO user (user_id, password, name, college, contact, grade, type) VALUES (?, ?, ?, ?, ?, ?, 0)',
-        [user_id, hashedPassword, name, college, contact, grade]
-      );
+    // 用户登录
+    login: async (req, res) => {
+        try {
+            const { userId, password } = req.body;
 
-      // 获取新插入的用户信息
-      const [users] = await db.execute(
-        'SELECT * FROM user WHERE user_id = ?',
-        [user_id]
-      );
-      
-      const user = users[0];
-      
-      // 生成 token
-      const token = jwt.sign(
-        { user_id: user.user_id, type: user.type },
-        JWT_SECRET,
-        { expiresIn: '24h' }
-      );
+            // 查找用户
+            const [users] = await db.query('SELECT * FROM User WHERE user_id = ?', [userId]);
+            if (users.length === 0) {
+                return responseHandler(res, 400, false, '用户不存在');
+            }
 
-      // 返回用户信息（不包含密码）
-      const userInfo = { ...user };
-      delete userInfo.password;
+            const user = users[0];
 
-      ResponseHandler.success(res, { token, userInfo }, '注册成功');
-    } catch (error) {
-      console.error('Register error:', error);
-      ResponseHandler.error(res, '注册失败');
+            // 验证密码
+            const isPasswordValid = await bcrypt.compare(password, user.password);
+            if (!isPasswordValid) {
+                return responseHandler(res, 400, false, '密码错误');
+            }
+
+            // 返回用户信息（不包含密码）
+            const userInfo = {
+                userId: user.user_id,
+                name: user.name,
+                college: user.college,
+                contact: user.contact,
+                grade: user.grade
+            };
+
+            responseHandler(res, 200, true, '登录成功', { user: userInfo });
+        } catch (error) {
+            console.error('登录错误:', error);
+            responseHandler(res, 500, false, '登录失败，请稍后重试');
+        }
     }
-  }
+};
 
-  static async login(req, res) {
-    try {
-      const { user_id, password } = req.body;
-
-      // 查找用户
-      const [users] = await db.execute(
-        'SELECT * FROM user WHERE user_id = ?',
-        [user_id]
-      );
-
-      if (users.length === 0) {
-        return ResponseHandler.error(res, '用户不存在', 400);
-      }
-
-      const user = users[0];
-
-      // 验证密码
-      const isValidPassword = await bcrypt.compare(password, user.password);
-      if (!isValidPassword) {
-        return ResponseHandler.error(res, '密码错误', 400);
-      }
-
-      // 生成 token
-      const token = jwt.sign(
-        { user_id: user.user_id, type: user.type },
-        JWT_SECRET,
-        { expiresIn: '24h' }
-      );
-
-      // 返回用户信息（不包含密码）
-      const userInfo = { ...user };
-      delete userInfo.password;
-
-      ResponseHandler.success(res, { token, userInfo }, '登录成功');
-    } catch (error) {
-      console.error('Login error:', error);
-      ResponseHandler.error(res, '登录失败');
-    }
-  }
-}
-
-module.exports = UserController; 
+module.exports = userController; 
