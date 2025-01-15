@@ -274,7 +274,6 @@ export default {
           this.userType = this.loginType
           if (this.loginType === 'user') {
             this.userInfo = data.data.user
-            // 保存用户信息到本地存储，确保是对象格式
             const userInfoToStore = {
               userId: data.data.user.userId,
               name: data.data.user.name,
@@ -288,7 +287,6 @@ export default {
             uni.setStorageSync('isLoggedIn', 'true')
           } else {
             this.merchantInfo = data.data.merchant
-            // 保存商家信息到本地存储
             uni.setStorageSync('merchantInfo', data.data.merchant)
             uni.setStorageSync('userType', 'merchant')
             uni.setStorageSync('isLoggedIn', 'true')
@@ -306,9 +304,16 @@ export default {
         }
       } catch (error) {
         console.error('登录错误:', error)
+        let errorMessage = '网络错误...'
+        if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
+          errorMessage = '无法连接到服务器，请检查网络连接'
+        } else if (error instanceof SyntaxError) {
+          errorMessage = '服务器响应格式错误'
+        }
         uni.showToast({
-          title: '网络错误',
-          icon: 'none'
+          title: errorMessage,
+          icon: 'none',
+          duration: 2000
         })
       }
     },
