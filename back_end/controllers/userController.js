@@ -91,6 +91,57 @@ const userController = {
             console.error('登录错误:', error);
             responseHandler(res, 500, false, '登录失败，请稍后重试');
         }
+    },
+
+    // 更新用户信息
+    updateUser: async (req, res) => {
+        const connection = await db.getConnection();
+        try {
+            const { userId } = req.params;
+            const { name, college, contact, grade } = req.body;
+
+            // 验证必填字段
+            if (!name || !college || !contact || !grade) {
+                return responseHandler(res, 400, false, '所有字段都是必填的');
+            }
+
+            // 验证用户是否存在
+            const [existingUser] = await connection.query(
+                'SELECT * FROM User WHERE user_id = ?',
+                [userId]
+            );
+
+            if (existingUser.length === 0) {
+                return responseHandler(res, 404, false, '用户不存在');
+            }
+
+            // 开始事务
+            await connection.beginTransaction();
+
+            // 更新用户信息
+            await connection.query(
+                'UPDATE User SET name = ?, college = ?, contact = ?, grade = ? WHERE user_id = ?',
+                [name, college, contact, grade, userId]
+            );
+
+            // 获取更新后的用户信息
+            const [updatedUser] = await connection.query(
+                'SELECT user_id, name, college, contact, grade, type FROM User WHERE user_id = ?',
+                [userId]
+            );
+
+            // 提交事务
+            await connection.commit();
+
+            responseHandler(res, 200, true, '用户信息更新成功', { user: updatedUser[0] });
+        } catch (error) {
+            // 回滚事务
+            await connection.rollback();
+            console.error('更新用户信息失败:', error);
+            responseHandler(res, 500, false, '更新用户信息失败，请稍后重试');
+        } finally {
+            connection.release();
+        }
     }
 };
 

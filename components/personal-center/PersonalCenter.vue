@@ -40,6 +40,10 @@
           </template>
           <!-- 普通用户菜单 -->
           <template v-else>
+            <view class="menu-item" @click="handleOrders">
+              <text class="iconfont icon-order"></text>
+              <text>我的订单</text>
+            </view>
             <view class="menu-item" @click="handleDeliveries">
               <text class="iconfont icon-delivery"></text>
               <text>配送记录</text>
@@ -270,14 +274,22 @@ export default {
           this.userType = this.loginType
           if (this.loginType === 'user') {
             this.userInfo = data.data.user
-            // 保存用户信息到本地存储
-            uni.setStorageSync('userInfo', JSON.stringify(data.data.user))
+            // 保存用户信息到本地存储，确保是对象格式
+            const userInfoToStore = {
+              userId: data.data.user.userId,
+              name: data.data.user.name,
+              college: data.data.user.college,
+              contact: data.data.user.contact,
+              grade: data.data.user.grade,
+              type: data.data.user.type
+            }
+            uni.setStorageSync('userInfo', userInfoToStore)
             uni.setStorageSync('userType', 'user')
             uni.setStorageSync('isLoggedIn', 'true')
           } else {
             this.merchantInfo = data.data.merchant
             // 保存商家信息到本地存储
-            uni.setStorageSync('merchantInfo', JSON.stringify(data.data.merchant))
+            uni.setStorageSync('merchantInfo', data.data.merchant)
             uni.setStorageSync('userType', 'merchant')
             uni.setStorageSync('isLoggedIn', 'true')
           }
@@ -348,17 +360,49 @@ export default {
     },
     // 其他功能方法
     handleDeliveries() {
-      uni.navigateTo({ url: '/pages/user/deliveries/deliveries' })
+      if (this.userInfo && this.userInfo.userId) {
+        uni.navigateTo({
+          url: `/pages/user/deliveries/deliveries?userId=${this.userInfo.userId}`
+        })
+      } else {
+        uni.showToast({
+          title: '请先登录',
+          icon: 'none'
+        })
+      }
     },
     handleComplaints() {
-      if (this.userInfo && this.userInfo.type === 1) {
-        uni.navigateTo({ url: '/pages/admin/complaints/complaints' })
+      if (!this.userInfo) {
+        uni.showToast({
+          title: '请先登录',
+          icon: 'none'
+        })
+        return
+      }
+      
+      if (this.userInfo.type === 1) {
+        // 管理员跳转到投诉管理页面
+        uni.navigateTo({ 
+          url: '/pages/admin/complaints/complaints' 
+        })
       } else {
-        uni.navigateTo({ url: '/pages/complaints/complaints' })
+        // 普通用户跳转到个人投诉记录页面
+        uni.navigateTo({ 
+          url: `/pages/user/complaints/complaints?userId=${this.userInfo.userId}` 
+        })
       }
     },
     handleSettings() {
-      uni.navigateTo({ url: '/pages/settings/settings' })
+      if (!this.userInfo) {
+        uni.showToast({
+          title: '请先登录',
+          icon: 'none'
+        })
+        return
+      }
+      uni.navigateTo({ 
+        url: '/pages/user/settings/settings' 
+      })
     },
     handleDishes() {
       uni.navigateTo({ url: '/pages/merchant/dishes/dishes' })
@@ -393,6 +437,18 @@ export default {
     },
     handleBlacklist() {
       uni.navigateTo({ url: '/pages/admin/blacklist/blacklist' })
+    },
+    handleOrders() {
+      if (this.userInfo && this.userInfo.userId) {
+        uni.navigateTo({
+          url: `/pages/user/orders/orders?userId=${this.userInfo.userId}`
+        })
+      } else {
+        uni.showToast({
+          title: '请先登录',
+          icon: 'none'
+        })
+      }
     }
   },
   mounted() {
@@ -407,12 +463,17 @@ export default {
       if (userType === 'user') {
         const userInfo = uni.getStorageSync('userInfo')
         if (userInfo) {
-          this.userInfo = JSON.parse(userInfo)
+          this.userInfo = {
+            ...userInfo,
+            userId: userInfo.user_id || userInfo.userId // 兼容两种字段名
+          }
+          // 更新存储，确保使用统一的字段名
+          uni.setStorageSync('userInfo', this.userInfo)
         }
-      } else {
+      } else if (userType === 'merchant') {
         const merchantInfo = uni.getStorageSync('merchantInfo')
         if (merchantInfo) {
-          this.merchantInfo = JSON.parse(merchantInfo)
+          this.merchantInfo = merchantInfo
         }
       }
     }

@@ -125,64 +125,52 @@ const merchantController = {
 
     // 更新商家信息
     updateMerchant: async (req, res) => {
+        const connection = await db.getConnection();
         try {
             const { merchantNo } = req.params;
-            const { name, phone, description, diningHallNo } = req.body;
+            const { name, description, phone } = req.body;
 
             // 验证必填字段
-            if (!name || !phone || !diningHallNo) {
-                return responseHandler(res, 400, false, '缺少必要参数');
+            if (!name || !phone) {
+                return responseHandler(res, 400, false, '店铺名称和联系电话是必填的');
             }
 
-            // 验证商家是否存在且已通过审核
-            const [merchants] = await db.query(
-                'SELECT * FROM Merchant WHERE merchant_no = ? AND status = "已通过"',
+            // 验证商家是否存在
+            const [existingMerchant] = await connection.query(
+                'SELECT * FROM Merchant WHERE merchant_no = ?',
                 [merchantNo]
             );
 
-            if (merchants.length === 0) {
-                return responseHandler(res, 404, false, '商家不存在或未通过审核');
+            if (existingMerchant.length === 0) {
+                return responseHandler(res, 404, false, '商家不存在');
             }
 
-            // 验证食堂是否存在
-            const [diningHalls] = await db.query(
-                'SELECT * FROM DiningHall WHERE dininghall_no = ?',
-                [diningHallNo]
-            );
-
-            if (diningHalls.length === 0) {
-                return responseHandler(res, 404, false, '所选食堂不存在');
-            }
+            // 开始事务
+            await connection.beginTransaction();
 
             // 更新商家信息
-            const [result] = await db.query(
-                'UPDATE Merchant SET name = ?, phone = ?, description = ?, dininghall_no = ? WHERE merchant_no = ?',
-                [name, phone, description || '', diningHallNo, merchantNo]
+            await connection.query(
+                'UPDATE Merchant SET name = ?, description = ?, phone = ? WHERE merchant_no = ?',
+                [name, description, phone, merchantNo]
             );
 
-            if (result.affectedRows === 1) {
-                // 获取更新后的商家信息
-                const [updatedMerchant] = await db.query(
-                    'SELECT * FROM Merchant WHERE merchant_no = ?',
-                    [merchantNo]
-                );
+            // 获取更新后的商家信息
+            const [updatedMerchant] = await connection.query(
+                'SELECT merchant_no, name, description, phone, dininghall_no, status, likes, hates FROM Merchant WHERE merchant_no = ?',
+                [merchantNo]
+            );
 
-                responseHandler(res, 200, true, '修改成功', {
-                    merchant: {
-                        merchantNo: updatedMerchant[0].merchant_no,
-                        name: updatedMerchant[0].name,
-                        description: updatedMerchant[0].description,
-                        phone: updatedMerchant[0].phone,
-                        diningHallNo: updatedMerchant[0].dininghall_no,
-                        status: updatedMerchant[0].status
-                    }
-                });
-            } else {
-                throw new Error('修改商家信息失败');
-            }
+            // 提交事务
+            await connection.commit();
+
+            responseHandler(res, 200, true, '商家信息更新成功', { merchant: updatedMerchant[0] });
         } catch (error) {
-            console.error('修改商家信息错误:', error);
-            responseHandler(res, 500, false, '修改商家信息失败，请稍后重试');
+            // 回滚事务
+            await connection.rollback();
+            console.error('更新商家信息失败:', error);
+            responseHandler(res, 500, false, '更新商家信息失败，请稍后重试');
+        } finally {
+            connection.release();
         }
     }
 };

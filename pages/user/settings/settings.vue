@@ -2,31 +2,42 @@
   <view class="settings-container">
     <view class="settings-form">
       <view class="form-item">
-        <text class="label">店铺名称</text>
+        <text class="label">姓名</text>
         <input 
           class="input" 
           type="text" 
-          v-model="merchantForm.name" 
-          placeholder="请输入店铺名称"
+          v-model="userForm.name" 
+          placeholder="请输入姓名"
         />
       </view>
       
       <view class="form-item">
-        <text class="label">店铺描述</text>
-        <textarea 
-          class="textarea" 
-          v-model="merchantForm.description" 
-          placeholder="请输入店铺描述"
+        <text class="label">学院</text>
+        <input 
+          class="input" 
+          type="text" 
+          v-model="userForm.college" 
+          placeholder="请输入学院"
         />
       </view>
       
       <view class="form-item">
-        <text class="label">联系电话</text>
+        <text class="label">联系方式</text>
         <input 
           class="input" 
           type="text" 
-          v-model="merchantForm.phone" 
-          placeholder="请输入联系电话"
+          v-model="userForm.contact" 
+          placeholder="请输入联系方式"
+        />
+      </view>
+      
+      <view class="form-item">
+        <text class="label">年级</text>
+        <input 
+          class="input" 
+          type="number" 
+          v-model="userForm.grade" 
+          placeholder="请输入年级"
         />
       </view>
       
@@ -39,22 +50,23 @@
 export default {
   data() {
     return {
-      merchantForm: {
+      userForm: {
         name: '',
-        description: '',
-        phone: ''
+        college: '',
+        contact: '',
+        grade: ''
       },
-      merchantNo: '',
+      userId: '',
       baseUrl: 'http://localhost:3000/api'
     }
   },
   
   onLoad() {
-    // 从本地存储获取商家信息
-    const merchantInfo = uni.getStorageSync('merchantInfo')
-    console.log('Current merchantInfo:', merchantInfo)
+    // 从本地存储获取用户信息
+    const userInfo = uni.getStorageSync('userInfo')
+    console.log('Current userInfo:', userInfo)
     
-    if (!merchantInfo) {
+    if (!userInfo) {
       uni.showToast({
         title: '请先登录',
         icon: 'none'
@@ -65,29 +77,44 @@ export default {
       return
     }
 
-    // 直接使用存储的商家信息对象
-    this.merchantNo = merchantInfo.merchantNo
+    // 直接使用存储的用户信息对象
+    this.userId = userInfo.userId
     // 填充表单
-    this.merchantForm = {
-      name: merchantInfo.name || '',
-      description: merchantInfo.description || '',
-      phone: merchantInfo.phone || ''
+    this.userForm = {
+      name: userInfo.name || '',
+      college: userInfo.college || '',
+      contact: userInfo.contact || '',
+      grade: userInfo.grade || ''
     }
-    console.log('Form initialized with:', this.merchantForm)
+    console.log('Form initialized with:', this.userForm)
   },
   
   methods: {
     validateForm() {
-      if (!this.merchantForm.name) {
+      if (!this.userForm.name) {
         uni.showToast({
-          title: '请输入店铺名称',
+          title: '请输入姓名',
           icon: 'none'
         })
         return false
       }
-      if (!this.merchantForm.phone) {
+      if (!this.userForm.college) {
         uni.showToast({
-          title: '请输入联系电话',
+          title: '请输入学院',
+          icon: 'none'
+        })
+        return false
+      }
+      if (!this.userForm.contact) {
+        uni.showToast({
+          title: '请输入联系方式',
+          icon: 'none'
+        })
+        return false
+      }
+      if (!this.userForm.grade) {
+        uni.showToast({
+          title: '请输入年级',
           icon: 'none'
         })
         return false
@@ -98,35 +125,35 @@ export default {
     async handleSubmit() {
       if (!this.validateForm()) return
       
-      if (!this.merchantNo) {
+      if (!this.userId) {
         uni.showToast({
-          title: '商家编号不存在，请重新登录',
+          title: '用户ID不存在，请重新登录',
           icon: 'none'
         })
         return
       }
       
-      console.log('Submitting form with merchantNo:', this.merchantNo)
-      console.log('Form data:', this.merchantForm)
+      console.log('Submitting form with userId:', this.userId)
+      console.log('Form data:', this.userForm)
       
       try {
         const response = await uni.request({
-          url: `${this.baseUrl}/merchant/${this.merchantNo}`,
+          url: `${this.baseUrl}/user/${this.userId}`,
           method: 'POST',
-          data: this.merchantForm
+          data: this.userForm
         })
         
         console.log('API Response:', response)
         
         // 检查响应状态
         if (response.statusCode === 200 && response.data.success) {
-          // 更新本地存储的商家信息
-          const merchantInfo = uni.getStorageSync('merchantInfo')
-          const updatedMerchantInfo = {
-            ...merchantInfo,
-            ...this.merchantForm
+          // 更新本地存储的用户信息
+          const userInfo = uni.getStorageSync('userInfo')
+          const updatedUserInfo = {
+            ...userInfo,
+            ...this.userForm
           }
-          uni.setStorageSync('merchantInfo', updatedMerchantInfo)
+          uni.setStorageSync('userInfo', updatedUserInfo)
           
           uni.showToast({
             title: '保存成功',
@@ -144,7 +171,7 @@ export default {
           })
         }
       } catch (error) {
-        console.error('更新商家信息失败:', error)
+        console.error('更新用户信息失败:', error)
         uni.showToast({
           title: '保存失败',
           icon: 'none'
@@ -188,21 +215,7 @@ export default {
       background-color: #fff;
       
       &:focus {
-        border-color: #ff9800;
-      }
-    }
-    
-    .textarea {
-      width: 100%;
-      height: 160rpx;
-      border: 1rpx solid #ddd;
-      border-radius: 8rpx;
-      padding: 20rpx;
-      font-size: 28rpx;
-      background-color: #fff;
-      
-      &:focus {
-        border-color: #ff9800;
+        border-color: #007AFF;
       }
     }
   }
@@ -212,7 +225,7 @@ export default {
     height: 88rpx;
     line-height: 88rpx;
     text-align: center;
-    background-color: #ff9800;
+    background-color: #007AFF;
     color: #fff;
     border-radius: 44rpx;
     font-size: 32rpx;

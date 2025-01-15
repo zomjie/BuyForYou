@@ -101,8 +101,8 @@ export default {
   methods: {
     async fetchDishes() {
       try {
-        const merchantInfoStr = uni.getStorageSync('merchantInfo')
-        if (!merchantInfoStr) {
+        const merchantInfo = uni.getStorageSync('merchantInfo')
+        if (!merchantInfo) {
           uni.showToast({
             title: '请先登录',
             icon: 'none'
@@ -115,7 +115,6 @@ export default {
           return
         }
 
-        const merchantInfo = JSON.parse(merchantInfoStr)
         if (!merchantInfo.merchantNo) {
           uni.showToast({
             title: '商家信息不完整',
@@ -185,8 +184,8 @@ export default {
       }
 
       try {
-        const merchantInfoStr = uni.getStorageSync('merchantInfo')
-        if (!merchantInfoStr) {
+        const merchantInfo = uni.getStorageSync('merchantInfo')
+        if (!merchantInfo) {
           uni.showToast({
             title: '请先登录',
             icon: 'none'
@@ -194,7 +193,6 @@ export default {
           return
         }
 
-        const merchantInfo = JSON.parse(merchantInfoStr)
         if (!merchantInfo.merchantNo) {
           uni.showToast({
             title: '商家信息不完整',
@@ -278,8 +276,8 @@ export default {
       }
 
       try {
-        const merchantInfoStr = uni.getStorageSync('merchantInfo')
-        if (!merchantInfoStr) {
+        const merchantInfo = uni.getStorageSync('merchantInfo')
+        if (!merchantInfo) {
           uni.showToast({
             title: '请先登录',
             icon: 'none'
@@ -287,7 +285,6 @@ export default {
           return
         }
 
-        const merchantInfo = JSON.parse(merchantInfoStr)
         if (!merchantInfo.merchantNo) {
           uni.showToast({
             title: '商家信息不完整',

@@ -64,6 +64,37 @@
 				"navigationBarBackgroundColor": "#ff9800",
 				"navigationBarTextStyle": "white"
 			}
+		},
+		{
+			"path": "pages/user/orders/orders",
+			"style": {
+				"navigationBarTitleText": "我的订单",
+				"navigationBarBackgroundColor": "#ff9800",
+				"navigationBarTextStyle": "white"
+			}
+		},
+		{
+			"path": "pages/user/complaints/complaints",
+			"style": {
+				"navigationBarTitleText": "投诉记录",
+				"enablePullDownRefresh": true
+			}
+		},
+		{
+			"path": "pages/user/settings/settings",
+			"style": {
+				"navigationBarTitleText": "个人设置",
+				"navigationBarBackgroundColor": "#ff9800",
+				"navigationBarTextStyle": "white"
+			}
+		},
+		{
+			"path": "pages/merchant/settings/settings",
+			"style": {
+				"navigationBarTitleText": "店铺设置",
+				"navigationBarBackgroundColor": "#ff9800",
+				"navigationBarTextStyle": "white"
+			}
 		}
 	],
 	"globalStyle": {
