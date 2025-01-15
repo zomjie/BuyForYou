@@ -4,6 +4,7 @@ const userRoutes = require('./routes/userRoutes');
 const merchantRoutes = require('./routes/merchantRoutes');
 const dishRoutes = require('./routes/dishRoutes');
 const orderRoutes = require('./routes/orderRoutes');
+const blacklistRoutes = require('./routes/blacklistRoutes');
 
 const app = express();
 
@@ -22,6 +23,7 @@ app.use('/api/user', userRoutes);
 app.use('/api/merchant', merchantRoutes);
 app.use('/api/dishes', dishRoutes);
 app.use('/api/order', orderRoutes);
+app.use('/api/blacklist', blacklistRoutes);
 
 // 错误处理中间件
 app.use((err, req, res, next) => {

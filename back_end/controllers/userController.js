@@ -76,6 +76,16 @@ const userController = {
                 return responseHandler(res, 400, false, '密码错误');
             }
 
+            // 检查用户是否在黑名单中
+            const [blacklistRecord] = await db.query(
+                'SELECT * FROM Blacklist WHERE user_id = ? AND status = "有效" ORDER BY created_at DESC LIMIT 1',
+                [userId]
+            );
+
+            if (blacklistRecord.length > 0) {
+                return responseHandler(res, 403, false, '您的账号已被加入黑名单，无法登录');
+            }
+
             // 返回用户信息（不包含密码）
             const userInfo = {
                 userId: user.user_id,

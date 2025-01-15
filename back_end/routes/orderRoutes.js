@@ -35,4 +35,10 @@ router.post('/complaint', orderController.addComplaint);
 // 获取用户投诉记录
 router.get('/complaints/:userId', orderController.getUserComplaints);
 
+// 获取未处理的投诉列表
+router.get('/pending-complaints', orderController.getPendingComplaints);
+
+// 处理投诉
+router.post('/complaint/:complaintId/handle', orderController.handleComplaint);
+
 module.exports = router; 

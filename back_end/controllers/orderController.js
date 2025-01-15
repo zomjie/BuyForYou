@@ -1,4 +1,5 @@
 const db = require('../db');
+const { responseHandler } = require('../utils/responseHandler');
 
 // 获取订单列表
 exports.getOrders = async (req, res) => {
@@ -671,6 +672,95 @@ exports.getUserComplaints = async (req, res) => {
             success: false,
             message: '获取投诉记录失败，请稍后重试'
         });
+    } finally {
+        connection.release();
+    }
+};
+
+// 处理投诉
+exports.handleComplaint = async (req, res) => {
+    const connection = await db.getConnection();
+    try {
+        await connection.beginTransaction();
+
+        const { complaintId } = req.params;
+        const { status } = req.body;
+
+        // 验证状态值
+        const validStatuses = ['已处理', '已驳回'];
+        if (!validStatuses.includes(status)) {
+            return responseHandler(res, 400, false, '无效的状态值，只能是"已处理"或"已驳回"');
+        }
+
+        // 检查投诉是否存在
+        const [complaints] = await connection.query(
+            'SELECT * FROM Complaint WHERE complaint_id = ?',
+            [complaintId]
+        );
+
+        if (complaints.length === 0) {
+            return responseHandler(res, 404, false, '投诉记录不存在');
+        }
+
+        // 更新投诉状态
+        await connection.query(
+            'UPDATE Complaint SET status = ? WHERE complaint_id = ?',
+            [status, complaintId]
+        );
+
+        await connection.commit();
+        return responseHandler(res, 200, true, '投诉处理成功', { complaint_id: complaintId, status });
+
+    } catch (error) {
+        await connection.rollback();
+        console.error('处理投诉失败:', error);
+        return responseHandler(res, 500, false, error.message || '处理投诉失败');
+    } finally {
+        connection.release();
+    }
+};
+
+// 获取未处理的投诉列表
+exports.getPendingComplaints = async (req, res) => {
+    const connection = await db.getConnection();
+    try {
+        // 查询未处理的投诉记录，同时关联订单和用户信息
+        const [complaints] = await connection.query(`
+            SELECT 
+                c.*,
+                mo.order_time,
+                mo.buyer_position,
+                mo.category,
+                u.name as complainant_name,
+                u.contact as complainant_contact
+            FROM Complaint c
+            LEFT JOIN MealOrder mo ON c.order_id = mo.order_id
+            LEFT JOIN User u ON c.complainant_id = u.user_id
+            WHERE c.status = '待处理'
+            ORDER BY c.created_at DESC
+        `);
+
+        // 格式化数据
+        const formattedComplaints = complaints.map(complaint => ({
+            complaintId: complaint.complaint_id,
+            orderId: complaint.order_id,
+            orderTime: complaint.order_time,
+            buyerPosition: complaint.buyer_position,
+            category: complaint.category,
+            complainantId: complaint.complainant_id,
+            complainantName: complaint.complainant_name,
+            complainantContact: complaint.complainant_contact,
+            complaintType: complaint.complaint_type,
+            reason: complaint.reason,
+            evidence: complaint.evidence,
+            status: complaint.status,
+            createdAt: complaint.created_at
+        }));
+
+        return responseHandler(res, 200, true, '获取未处理投诉记录成功', formattedComplaints);
+    } catch (error) {
+        console.error('获取未处理投诉记录失败:', error);
+        return responseHandler(res, 500, false, error.message || '获取未处理投诉记录失败');
     } finally {
         connection.release();
     }
