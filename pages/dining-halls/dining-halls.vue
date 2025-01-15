@@ -60,7 +60,7 @@ export default {
   methods: {
     async fetchDiningHallsData() {
       try {
-        const response = await fetch('http://localhost:3000/api/dishes/grouped-by-dininghall')
+        const response = await fetch('http://38.55.235.56:3000/api/dishes/grouped-by-dininghall')
         const data = await response.json()
         
         if (data.success) {

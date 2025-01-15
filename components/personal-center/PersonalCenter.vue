@@ -255,7 +255,7 @@ export default {
     },
     async handleLogin() {
       try {
-        const url = this.loginType === 'user' ? 'http://localhost:3000/api/user/login' : 'http://localhost:3000/api/merchant/login'
+        const url = this.loginType === 'user' ? 'http://38.55.235.56:3000/api/user/login' : 'http://38.55.235.56:3000/api/merchant/login'
         const params = this.loginType === 'user' 
           ? { userId: this.loginForm.userId, password: this.loginForm.password }
           : { merchantNo: this.loginForm.merchantNo, password: this.loginForm.password }
@@ -314,7 +314,7 @@ export default {
     },
     async handleRegister() {
       try {
-        const url = this.loginType === 'user' ? 'http://localhost:3000/api/user/register' : 'http://localhost:3000/api/merchant/register'
+        const url = this.loginType === 'user' ? 'http://38.55.235.56:3000/api/user/register' : 'http://38.55.235.56:3000/api/merchant/register'
         const params = this.loginType === 'user' 
           ? {
               userId: this.registerForm.userId,

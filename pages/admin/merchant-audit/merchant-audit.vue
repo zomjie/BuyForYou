@@ -57,7 +57,7 @@ export default {
   methods: {
     async fetchPendingMerchants() {
       try {
-        const response = await fetch('http://localhost:3000/api/merchant/pending')
+        const response = await fetch('http://38.55.235.56:3000/api/merchant/pending')
         const data = await response.json()
 
         if (data.success) {
@@ -86,7 +86,7 @@ export default {
 
     async handleApprove(merchantNo) {
       try {
-        const response = await fetch(`http://localhost:3000/api/merchant/audit/${merchantNo}`, {
+        const response = await fetch(`http://38.55.235.56:3000/api/merchant/audit/${merchantNo}`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -121,7 +121,7 @@ export default {
 
     async handleReject(merchantNo) {
       try {
-        const response = await fetch(`http://localhost:3000/api/merchant/audit/${merchantNo}`, {
+        const response = await fetch(`http://38.55.235.56:3000/api/merchant/audit/${merchantNo}`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'

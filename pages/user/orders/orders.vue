@@ -109,7 +109,7 @@
 		data() {
 			return {
 				orders: [],
-				baseUrl: 'http://localhost:3000/api',
+				baseUrl: 'http://38.55.235.56:3000/api',
 				userId: '',
 				showComplaint: false,
 				complaintTypes: ['配送延迟', '态度恶劣', '商品损坏', '未按要求配送', '其他'],

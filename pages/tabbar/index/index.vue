@@ -181,7 +181,7 @@
 				selectedDish: null,
 				orderQuantity: 1,
 				orderRemark: '',
-				baseUrl: 'http://localhost:3000/api',
+				baseUrl: 'http://38.55.235.56:3000/api',
 				cartItems: [], // 购物车商品列表
 				showCheckoutConfirm: false, // 结算确认弹窗
 				categoryIndex: 1, // 默认选中午餐

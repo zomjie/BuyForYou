@@ -77,7 +77,7 @@ export default {
       dishes: [],
       showAddModal: false,
       showEditModal: false,
-      baseUrl: 'http://localhost:3000/api',
+      baseUrl: 'http://38.55.235.56:3000/api',
       newDish: {
         name: '',
         price: '',
