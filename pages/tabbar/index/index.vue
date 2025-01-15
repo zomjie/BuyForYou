@@ -335,8 +335,8 @@
 				}
 
 				try {
-					const userInfoStr = uni.getStorageSync('userInfo')
-					if (!userInfoStr) {
+					const userInfo = uni.getStorageSync('userInfo')
+					if (!userInfo) {
 						uni.showToast({
 							title: '请先登录',
 							icon: 'none'
@@ -344,7 +344,8 @@
 						return
 					}
 
-					const userInfo = JSON.parse(userInfoStr)
+					// 确保 userInfo 是对象
+					const userInfoObj = typeof userInfo === 'string' ? JSON.parse(userInfo) : userInfo
 					
 					// 创建订单
 					const result = await new Promise((resolve, reject) => {
@@ -352,7 +353,7 @@
 							url: `${this.baseUrl}/order/batch`,
 							method: 'POST',
 							data: {
-								userId: userInfo.userId,
+								userId: userInfoObj.userId,
 								items: this.cartItems.map(item => ({
 									dishNo: item.dishNo,
 									quantity: item.quantity,

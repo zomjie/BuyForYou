@@ -5,6 +5,7 @@ const merchantRoutes = require('./routes/merchantRoutes');
 const dishRoutes = require('./routes/dishRoutes');
 const orderRoutes = require('./routes/orderRoutes');
 const blacklistRoutes = require('./routes/blacklistRoutes');
+const db = require('./config/database');
 
 const app = express();
 
@@ -32,6 +33,15 @@ app.use((err, req, res, next) => {
     success: false,
     message: err.message || '服务器内部错误'
   });
+});
+
+// 添加未捕获异常处理
+process.on('uncaughtException', (error) => {
+    console.error('Uncaught Exception:', error);
+});
+
+process.on('unhandledRejection', (error) => {
+    console.error('Unhandled Rejection:', error);
 });
 
 const PORT = process.env.PORT || 3000;

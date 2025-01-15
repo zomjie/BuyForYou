@@ -1,4 +1,4 @@
-const db = require('../db');
+const db = require('../config/database');
 const { responseHandler } = require('../utils/responseHandler');
 
 // 获取订单列表
@@ -722,47 +722,71 @@ exports.handleComplaint = async (req, res) => {
 
 // 获取未处理的投诉列表
 exports.getPendingComplaints = async (req, res) => {
-    const connection = await db.getConnection();
+    let connection;
     try {
+        connection = await db.getConnection();
+        
         // 查询未处理的投诉记录，同时关联订单和用户信息
         const [complaints] = await connection.query(`
             SELECT 
                 c.*,
+                mo.buyer_id,
+                mo.deliverer_id,
                 mo.order_time,
-                mo.buyer_position,
                 mo.category,
-                u.name as complainant_name,
-                u.contact as complainant_contact
+                mo.buyer_position,
+                u1.name as complainant_name,
+                u1.contact as complainant_contact,
+                u2.name as buyer_name,
+                u2.contact as buyer_contact,
+                u3.name as deliverer_name,
+                u3.contact as deliverer_contact
             FROM Complaint c
             LEFT JOIN MealOrder mo ON c.order_id = mo.order_id
-            LEFT JOIN User u ON c.complainant_id = u.user_id
+            LEFT JOIN User u1 ON c.complainant_id = u1.user_id
+            LEFT JOIN User u2 ON mo.buyer_id = u2.user_id
+            LEFT JOIN User u3 ON mo.deliverer_id = u3.user_id
             WHERE c.status = '待处理'
             ORDER BY c.created_at DESC
         `);
-
+        
         // 格式化数据
         const formattedComplaints = complaints.map(complaint => ({
             complaintId: complaint.complaint_id,
             orderId: complaint.order_id,
-            orderTime: complaint.order_time,
-            buyerPosition: complaint.buyer_position,
-            category: complaint.category,
             complainantId: complaint.complainant_id,
             complainantName: complaint.complainant_name,
             complainantContact: complaint.complainant_contact,
+            buyerId: complaint.buyer_id,
+            buyerName: complaint.buyer_name,
+            buyerContact: complaint.buyer_contact,
+            delivererId: complaint.deliverer_id,
+            delivererName: complaint.deliverer_name,
+            delivererContact: complaint.deliverer_contact,
             complaintType: complaint.complaint_type,
             reason: complaint.reason,
             evidence: complaint.evidence,
             status: complaint.status,
-            createdAt: complaint.created_at
+            createdAt: complaint.created_at,
+            orderTime: complaint.order_time,
+            category: complaint.category,
+            buyerPosition: complaint.buyer_position
         }));
 
-        return responseHandler(res, 200, true, '获取未处理投诉记录成功', formattedComplaints);
+        return res.json({
+            success: true,
+            data: formattedComplaints
+        });
     } catch (error) {
         console.error('获取未处理投诉记录失败:', error);
-        return responseHandler(res, 500, false, error.message || '获取未处理投诉记录失败');
+        return res.status(500).json({
+            success: false,
+            message: '获取未处理投诉记录失败'
+        });
     } finally {
-        connection.release();
+        if (connection) {
+            connection.release();
+        }
     }
 };
 

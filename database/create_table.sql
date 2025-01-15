@@ -64,7 +64,7 @@ CREATE TABLE MealOrder (
 
 -- Then create Dish which depends on Merchant
 CREATE TABLE Dish (
-    dishno INT PRIMARY KEY,
+    dishno INT PRIMARY KEY auto_increment,
     dishname VARCHAR(50) NOT NULL,
     dishtype VARCHAR(20),
     price FLOAT NOT NULL,

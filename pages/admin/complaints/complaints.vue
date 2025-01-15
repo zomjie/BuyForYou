@@ -20,12 +20,26 @@
 				</view>
 				<view class="complaint-content">
 					<view class="info-row">
+						<text class="label">订单编号：</text>
+						<text>{{complaint.orderId}}</text>
+					</view>
+					<view class="info-row">
 						<text class="label">投诉人：</text>
-						<text>{{complaint.complainantName}}</text>
+						<text>{{complaint.complainantName}} (ID: {{complaint.complainantId}})</text>
 					</view>
 					<view class="info-row">
 						<text class="label">联系方式：</text>
 						<text>{{complaint.complainantContact}}</text>
+					</view>
+					<view class="info-row">
+						<text class="label">下单者：</text>
+						<text>{{complaint.buyerName}} (ID: {{complaint.buyerId}})</text>
+						<button class="blacklist-btn" @click="handleAddToBlacklist(complaint.buyerId, '下单者违规')">加入黑名单</button>
+					</view>
+					<view class="info-row" v-if="complaint.delivererId">
+						<text class="label">配送者：</text>
+						<text>{{complaint.delivererName}} (ID: {{complaint.delivererId}})</text>
+						<button class="blacklist-btn" @click="handleAddToBlacklist(complaint.delivererId, '配送者违规')">加入黑名单</button>
 					</view>
 					<view class="info-row">
 						<text class="label">订单类型：</text>
@@ -67,12 +81,19 @@
 			return {
 				complaints: [],
 				loading: true,
-				baseUrl: 'http://localhost:3000/api'
+				baseUrl: 'http://localhost:3000/api',
+				userInfo: null
 			}
 		},
 
 		onLoad() {
 			this.loadComplaints()
+			// 获取管理员信息
+			const userInfo = uni.getStorageSync('userInfo')
+			if (userInfo) {
+				// 检查 userInfo 是否已经是对象
+				this.userInfo = typeof userInfo === 'object' ? userInfo : JSON.parse(userInfo)
+			}
 		},
 
 		onPullDownRefresh() {
@@ -83,9 +104,13 @@
 			async loadComplaints() {
 				this.loading = true
 				try {
-					const response = await uni.request({
-						url: `${this.baseUrl}/order/pending-complaints`,
-						method: 'GET'
+					const response = await new Promise((resolve, reject) => {
+						uni.request({
+							url: `${this.baseUrl}/order/pending-complaints`,
+							method: 'GET',
+							success: res => resolve(res),
+							fail: err => reject(err)
+						})
 					})
 
 					if (response.data.success) {
@@ -97,7 +122,6 @@
 						})
 					}
 				} catch (error) {
-					console.error('获取投诉记录失败:', error)
 					uni.showToast({
 						title: '获取投诉记录失败',
 						icon: 'none'
@@ -110,10 +134,14 @@
 
 			async handleComplaint(complaintId, status) {
 				try {
-					const response = await uni.request({
-						url: `${this.baseUrl}/order/complaint/${complaintId}/handle`,
-						method: 'POST',
-						data: { status }
+					const response = await new Promise((resolve, reject) => {
+						uni.request({
+							url: `${this.baseUrl}/order/complaint/${complaintId}/handle`,
+							method: 'POST',
+							data: { status },
+							success: res => resolve(res),
+							fail: err => reject(err)
+						})
 					})
 
 					if (response.data.success) {
@@ -130,9 +158,51 @@
 						})
 					}
 				} catch (error) {
-					console.error('处理投诉失败:', error)
 					uni.showToast({
 						title: '处理失败',
+						icon: 'none'
+					})
+				}
+			},
+
+			async handleAddToBlacklist(userId, reason) {
+				if (!this.userInfo) {
+					uni.showToast({
+						title: '管理员信息获取失败',
+						icon: 'none'
+					})
+					return
+				}
+
+				try {
+					const response = await new Promise((resolve, reject) => {
+						uni.request({
+							url: `${this.baseUrl}/blacklist/add`,
+							method: 'POST',
+							data: {
+								user_id: userId,
+								reason: reason,
+								created_by: this.userInfo.userId
+							},
+							success: res => resolve(res),
+							fail: err => reject(err)
+						})
+					})
+
+					if (response.data.success) {
+						uni.showToast({
+							title: '已加入黑名单',
+							icon: 'success'
+						})
+					} else {
+						uni.showToast({
+							title: response.data.message || '加入黑名单失败',
+							icon: 'none'
+						})
+					}
+				} catch (error) {
+					uni.showToast({
+						title: '加入黑名单失败',
 						icon: 'none'
 					})
 				}
@@ -216,6 +286,7 @@
 
 				.info-row {
 					display: flex;
+					align-items: center;
 					margin-bottom: 16rpx;
 					font-size: 28rpx;
 					line-height: 1.5;
@@ -224,6 +295,20 @@
 						color: #666;
 						width: 160rpx;
 						flex-shrink: 0;
+					}
+
+					.blacklist-btn {
+						margin-left: 20rpx;
+						font-size: 24rpx;
+						padding: 4rpx 16rpx;
+						background-color: #ff4d4f;
+						color: #fff;
+						border-radius: 4rpx;
+						border: none;
+
+						&:active {
+							opacity: 0.8;
+						}
 					}
 				}
 			}
